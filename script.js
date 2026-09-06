@@ -10,6 +10,7 @@ const CONFIG = {
   supabaseAnonKey: 'sb_publishable_aRPb1yNunMEheat00BxwtQ_Uft732KJ',
   supabaseTable: 'pedidos_web',
   metaPixelId: '2412226475899711',
+  googleAdsConversionSendTo: 'AW-610202265/LIaMCPiLhfAcEJnl-6Ic',
   // Telegram se envía server-side desde el trigger de Supabase (notify_telegram_new_order).
   // NUNCA poner el bot token aquí: es código de cliente y quedaría público.
 };
@@ -296,6 +297,17 @@ function trackGA(eventName, payload = trackingPayload()) {
   window.dataLayer.push({ event: eventName, ...payload });
 }
 
+function trackGoogleAdsOrder(payload = trackingPayload()) {
+  if (typeof window.gtag !== 'function') return;
+
+  window.gtag('event', 'conversion', {
+    send_to: CONFIG.googleAdsConversionSendTo,
+    value: Number(payload.value) || CONFIG.productPrice,
+    currency: 'PYG',
+    transaction_id: String(payload.transaction_id || ''),
+  });
+}
+
 function trackMeta(eventName, payload = trackingPayload()) {
   if (typeof window.fbq !== 'function') {
     sendMetaFallback(eventName, payload);
@@ -333,6 +345,7 @@ function trackLandingEvent(eventName, payload = trackingPayload()) {
     },
     lead: () => {
       fireTracking('ga4:generate_lead', () => trackGA('generate_lead', payload));
+      fireTracking(`google_ads:order:${payload.transaction_id || 'current'}`, () => trackGoogleAdsOrder(payload));
       fireTracking('meta:Lead', () => trackMeta('Lead', payload));
     },
     contact: () => {
