@@ -142,9 +142,7 @@ const orderColorsSummary = document.querySelector('#orderColorsSummary');
 const quantitySelect = document.querySelector('#quantitySelect');
 const cityInput = document.querySelector('#cityInput');
 const departmentSelect = document.querySelector('#departmentSelect');
-const neighborhoodInput = document.querySelector('input[name="neighborhood"]');
 const addressInput = document.querySelector('textarea[name="address"]');
-const notesInput = document.querySelector('input[name="notes"]');
 const mapsInput = document.querySelector('input[name="map"]');
 const nameInput = document.querySelector('input[name="name"]');
 const phoneInput = document.querySelector('input[name="phone"]');
@@ -337,10 +335,6 @@ function trackLandingEvent(eventName, payload = trackingPayload()) {
       fireTracking('ga4:generate_lead', () => trackGA('generate_lead', payload));
       fireTracking('meta:Lead', () => trackMeta('Lead', payload));
     },
-    purchase: () => {
-      fireTracking('ga4:purchase', () => trackGA('purchase', payload));
-      fireTracking('meta:Purchase', () => trackMeta('Purchase', payload));
-    },
     contact: () => {
       fireTracking('ga4:contact', () => trackGA('contact', payload));
       fireTracking('meta:Contact', () => trackMeta('Contact', payload));
@@ -526,7 +520,7 @@ function setMapLink(link) {
     mapsInput.value = link;
     mapsInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
-  if (mapStatus) mapStatus.textContent = link ? '✓ Ubicación marcada correctamente' : 'Tocá el mapa para marcar tu ubicación';
+  if (mapStatus) mapStatus.textContent = link ? '✓ Punto de entrega guardado' : 'También podés tocar cualquier punto del mapa.';
 }
 
 function createGoogleMapsLink(lat, lng) {
@@ -579,7 +573,12 @@ function initMapPicker() {
     if (mapStatus) mapStatus.textContent = 'Buscando tu ubicación…';
     navigator.geolocation.getCurrentPosition(
       (position) => updateMapLocation(position.coords.latitude, position.coords.longitude, 17),
-      () => { if (mapStatus) mapStatus.textContent = 'No pudimos obtenerla. Tocá el mapa para marcarla.'; },
+      (error) => {
+        if (!mapStatus) return;
+        mapStatus.textContent = error.code === error.PERMISSION_DENIED
+          ? 'Permití el acceso a tu ubicación o tocá el punto manualmente.'
+          : 'No pudimos ubicarte. Tocá el punto de entrega en el mapa.';
+      },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
   });
@@ -631,14 +630,12 @@ function saveOrder(order) {
 
 function buildSupabasePayload(order) {
   // La tabla compartida `pedidos_web` solo tiene el conjunto base de columnas.
-  // Los datos extra (barrio, observaciones, envío, UTM, dispositivo) se guardan
+  // Los datos extra (observaciones, envío, UTM, dispositivo) se guardan
   // dentro de `referencia` para no perder información ni romper el insert.
   const refParts = [];
   if (order.detalle_colores || order.colores || order.color) {
     refParts.push(`Colores: ${order.detalle_colores || order.colores || order.color}`);
   }
-  if (order.barrio) refParts.push(`Barrio: ${order.barrio}`);
-  if (order.referencia) refParts.push(`Ref: ${order.referencia}`);
   if (order.observaciones) refParts.push(`Obs: ${order.observaciones}`);
   refParts.push(order.costo_envio === 0
     ? 'Envío gratis · Pago contra entrega'
@@ -665,6 +662,10 @@ function buildSupabasePayload(order) {
     direccion: order.direccion || 'No informado',
     referencia: refParts.join(' | ') || 'Sin referencia',
     ubicacion_maps: order.ubicacion_maps || 'No informado',
+    landing_url: order.landing_url || window.location.origin + window.location.pathname,
+    meta_fbp: order.meta_fbp || null,
+    meta_fbc: order.meta_fbc || null,
+    user_agent: navigator.userAgent || 'No informado',
     estado: order.estado || 'Pendiente',
     origen: order.origen || CONFIG.origin,
     created_at: order.created_at || new Date().toISOString(),
@@ -734,8 +735,7 @@ function validateStep(step) {
     if (!phoneInput?.value?.trim()) { if (step1FormError) step1FormError.textContent = 'Ingresá tu WhatsApp.'; phoneInput?.focus(); return false; }
     if (!departmentSelect?.value) { if (step1FormError) step1FormError.textContent = 'Seleccioná tu departamento.'; departmentSelect?.focus(); return false; }
     if (!cityInput?.value?.trim()) { if (step1FormError) step1FormError.textContent = 'Ingresá tu ciudad.'; cityInput?.focus(); return false; }
-    if (!neighborhoodInput?.value?.trim()) { if (step1FormError) step1FormError.textContent = 'Ingresá tu barrio.'; neighborhoodInput?.focus(); return false; }
-    if (!addressInput?.value?.trim()) { if (step1FormError) step1FormError.textContent = 'Ingresá tu dirección.'; addressInput?.focus(); return false; }
+    if (!addressInput?.value?.trim()) { if (step1FormError) step1FormError.textContent = 'Ingresá la dirección y una referencia para la entrega.'; addressInput?.focus(); return false; }
     if (step1FormError) step1FormError.textContent = '';
     return true;
   }
@@ -753,9 +753,9 @@ document.querySelectorAll('.step-back').forEach(btn => {
 });
 
 purchaseForm?.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && currentStep !== 2) {
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
     e.preventDefault();
-    document.querySelector(`.step-panel[data-step-panel="${currentStep}"] .step-next`)?.click();
+    orderSubmitButton?.click();
   }
 });
 
@@ -823,17 +823,13 @@ function updatePaymentConfirmation() {
   const hasDepartment = Boolean(departmentSelect?.value);
   const interior = isInteriorOrder();
 
-  if (interiorPaymentConfirmation) interiorPaymentConfirmation.hidden = !interior;
-  if (interiorPaymentCheck) interiorPaymentCheck.required = interior;
   orderSubmitButton?.classList.toggle('payment-advance', interior);
   if (orderSubmitButton && !window._submitting) {
-    orderSubmitButton.disabled = interior && !interiorPaymentCheck?.checked;
+    orderSubmitButton.disabled = false;
   }
 
   if (orderSubmitText) {
-    orderSubmitText.textContent = interior
-      ? '✅ CONFIRMAR PEDIDO CON PAGO ANTICIPADO'
-      : '✅ CONFIRMAR MI PEDIDO';
+    orderSubmitText.textContent = '✅ CONFIRMAR MI PEDIDO';
   }
 
   if (paymentTrustBadge) {
@@ -871,11 +867,6 @@ function setDeliveryNotice(value) {
 
 cityInput?.addEventListener('input', updatePaymentConfirmation);
 departmentSelect?.addEventListener('change', () => {
-  if (interiorPaymentCheck) interiorPaymentCheck.checked = false;
-  updatePaymentConfirmation();
-});
-interiorPaymentCheck?.addEventListener('change', () => {
-  if (formError) formError.textContent = '';
   updatePaymentConfirmation();
 });
 
@@ -885,7 +876,6 @@ function updateFinalSummary() {
   const price = pricesByQuantity[qty] || pricesByQuantity[1];
   const city = cityInput?.value?.trim() || '';
   const address = addressInput?.value?.trim() || '';
-  const neighborhood = neighborhoodInput?.value?.trim() || '';
   const available = isCashOnDeliveryDepartment(departmentSelect?.value);
 
   if (summaryColor) summaryColor.textContent = color;
@@ -894,7 +884,7 @@ function updateFinalSummary() {
   if (summaryDeliveryCost) summaryDeliveryCost.textContent = available ? 'Gratis' : 'A coordinar';
   if (summaryTotal) summaryTotal.textContent = formatGuarani(price);
   if (summaryCity) summaryCity.textContent = city || '-';
-  if (summaryAddress) summaryAddress.textContent = address ? address + (neighborhood ? ' - Barrio ' + neighborhood : '') : '-';
+  if (summaryAddress) summaryAddress.textContent = address || '-';
   if (summaryPayment) summaryPayment.textContent = available ? 'Pago contra entrega' : 'Pago previo (transportadora)';
   if (summaryEstimate) summaryEstimate.textContent = getEstimatedDeliveryLabel();
   if (paymentNote) paymentNote.textContent = available
@@ -946,7 +936,7 @@ function updateFinalSummary() {
 })();
 
 function setupInputAutoSave() {
-  const inputs = [nameInput, phoneInput, citySelect, neighborhoodInput, addressInput, referenceInput, observationsInput, mapsInput].filter(Boolean);
+  const inputs = [nameInput, phoneInput, cityInput, departmentSelect, addressInput, mapsInput].filter(Boolean);
   inputs.forEach(input => {
     input.addEventListener('input', saveFormDataToLocalStorage);
     if (input.tagName === 'SELECT') {
@@ -967,18 +957,12 @@ function setupWhatsAppTracking() {
 orderForms.forEach((form) => form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
+  if (!validateStep(1)) return;
+
   const formData = new FormData(form);
   const quantity = Number(formData.get('quantity') || 1);
   const submitButton = form.querySelector('button[type="submit"]');
   const currentFormError = form.querySelector('.form-error') || formError;
-
-  const selectedDepartment = cleanText(formData.get('department'));
-  const requiresAdvancePayment = Boolean(selectedDepartment) && !isCashOnDeliveryDepartment(selectedDepartment);
-  if (requiresAdvancePayment && formData.get('advance_payment_acknowledged') !== 'yes') {
-    if (currentFormError) currentFormError.textContent = 'Marcá el check para confirmar que entendés el pago anticipado.';
-    interiorPaymentCheck?.focus();
-    return;
-  }
 
   // Prevent double click
   if (window._submitting) return;
@@ -987,8 +971,6 @@ orderForms.forEach((form) => form.addEventListener('submit', async (event) => {
   const city = cleanText(formData.get('city'));
   const department = cleanText(formData.get('department'), getDeliveryZone(city));
   const address = cleanText(formData.get('address'), 'No informado');
-  const neighborhood = cleanText(formData.get('neighborhood'));
-  const notes = cleanText(formData.get('notes'));
   const observations = cleanText(formData.get('observations'));
   const mapUrl = cleanText(formData.get('map'), 'No informado');
   const subtotal = pricesByQuantity[quantity] || pricesByQuantity[1];
@@ -1042,15 +1024,15 @@ orderForms.forEach((form) => form.addEventListener('submit', async (event) => {
     telefono: cleanText(formData.get('phone')),
     departamento: department,
     ciudad: city,
-    barrio: neighborhood,
     direccion: address,
-    referencia: notes,
+    referencia: address,
     ubicacion_maps: mapUrl,
     observaciones: observations,
     estado: 'Pendiente de confirmación',
     origen: CONFIG.origin,
     fuente_trafico: trafficSource,
     pagina_origen: CONFIG.origin,
+    landing_url: window.location.origin + window.location.pathname,
     dispositivo: deviceType,
     device_type: deviceType,
     traffic_source: trafficSource,
@@ -1076,7 +1058,6 @@ orderForms.forEach((form) => form.addEventListener('submit', async (event) => {
 
     const payload = { ...trackingPayload(quantity), transaction_id: order.id, value: total };
     trackLandingEvent('lead', payload);
-    trackLandingEvent('purchase', payload);
 
     // La notificación a Telegram la dispara el trigger de Supabase al insertar el pedido.
 
@@ -1084,7 +1065,6 @@ orderForms.forEach((form) => form.addEventListener('submit', async (event) => {
     localStorage.removeItem('checkout_phone');
     localStorage.removeItem('checkout_city');
     localStorage.removeItem('checkout_address');
-    localStorage.removeItem('checkout_neighborhood');
 
     form.reset();
     selectedOrderColors = ['Negro'];

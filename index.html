@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
-  <link rel="stylesheet" href="styles.css?v=20260820-payment-check-v11">
+  <link rel="stylesheet" href="styles.css?v=20260905-checkout-map-pixel-v13">
 
   <!-- Google Tag Manager -->
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -296,10 +296,9 @@
           <h2>Confirmá tu pedido</h2>
         </div>
 
-        <div class="steps-indicator" id="stepsIndicator">
-          <div class="step-dot active" data-step-dot="1"><span class="step-num">1</span><span class="step-label">Tus datos</span></div>
-          <div class="step-line"></div>
-          <div class="step-dot" data-step-dot="2"><span class="step-num">2</span><span class="step-label">Confirmar</span></div>
+        <div class="checkout-direct-note">
+          <span aria-hidden="true">✓</span>
+          <p><strong>Pedido en un solo paso</strong>Completá tus datos y confirmá directamente.</p>
         </div>
 
         <form class="checkout-form" id="purchaseForm" data-order-form novalidate>
@@ -387,38 +386,40 @@
               <strong>Formas de pago:</strong> Asunción y Central: envío gratis y pago contra entrega. Interior: te contactamos para coordinar el abono antes del despacho.
             </div>
 
-            <label>
-              <span>Barrio</span>
-              <input type="text" name="neighborhood" required placeholder="Ej: Villa Morra">
-            </label>
-
-            <label>
-              <span>Dirección</span>
-              <textarea name="address" rows="2" autocomplete="street-address" required placeholder="Calle, número, zona"></textarea>
-            </label>
-
-            <label>
-              <span>Referencia de la vivienda <small>(opcional)</small></span>
-              <input type="text" name="notes" placeholder="Ej: Casa color blanco, portón negro">
+            <label class="delivery-address-field">
+              <span>Dirección y referencia de entrega</span>
+              <textarea name="address" rows="3" autocomplete="street-address" required placeholder="Ej: Av. Mariscal López 1234, casa blanca con portón negro"></textarea>
+              <small>Incluí calle, número y una referencia que facilite la entrega.</small>
             </label>
 
             <div class="map-field">
-              <span class="map-field-label">Ubicación en el mapa <small>(opcional)</small></span>
+              <div class="map-field-heading">
+                <span class="map-field-label">Marcá el punto exacto de entrega</span>
+                <span class="map-recommended">Recomendado</span>
+              </div>
+              <p class="map-intro">Tocá el botón para ubicarte automáticamente. Después podés mover el marcador si hace falta.</p>
               <div class="inline-map-shell">
                 <div class="map-picker" id="mapPicker" aria-label="Mapa para marcar la ubicación del delivery"></div>
                 <div class="inline-map-actions">
-                  <button type="button" class="use-location-btn" id="useMyLocation">⌖ Usar mi ubicación</button>
-                  <span class="map-status" id="mapStatus" role="status">Tocá el mapa para marcar tu ubicación</span>
+                  <button type="button" class="use-location-btn" id="useMyLocation">⌖ Usar mi ubicación actual</button>
+                  <span class="map-status" id="mapStatus" role="status">También podés tocar cualquier punto del mapa.</span>
                 </div>
               </div>
-              <small class="map-help">Podés mover el marcador para ajustar el punto exacto.</small>
+              <small class="map-help">El marcador se guarda con tu pedido para ayudar al repartidor.</small>
               <input type="hidden" name="map" id="mapsInput">
             </div>
 
             <p class="form-error" id="step1FormError" role="alert"></p>
 
-            <div class="step-actions">
-              <button type="button" class="step-next" data-next="2">Revisar mi pedido →</button>
+            <button class="order-button pulse-buy direct-order-button" id="orderSubmitButton" type="submit">
+              <span class="btn-text">✅ CONFIRMAR MI PEDIDO</span>
+              <span class="btn-loader hidden"><span class="spinner"></span> Registrando pedido...</span>
+            </button>
+
+            <div class="trust-badges direct-trust-badges" aria-label="Elementos de confianza">
+              <span>🔒 Datos protegidos</span>
+              <span>🚚 Delivery GRATIS</span>
+              <span>📦 Envíos a todo Paraguay</span>
             </div>
 
             <section class="checkout-reviews checkout-reviews-after-action" aria-labelledby="checkoutReviewsTitle">
@@ -434,55 +435,6 @@
             </section>
           </div>
 
-          <div class="step-panel" data-step-panel="2" hidden>
-            <section class="order-summary" id="finalSummary">
-              <h3>Resumen del pedido</h3>
-              <dl>
-                <div><dt>Producto</dt><dd>Bolsón de Viaje Impermeable</dd></div>
-                <div><dt>Colores</dt><dd id="summaryColor">1 Negro</dd></div>
-                <div><dt>Cantidad</dt><dd id="summaryQuantity">1 unidad</dd></div>
-                <div><dt>Precio</dt><dd id="summaryUnitPrice">Gs. 199.000</dd></div>
-                <div><dt>Costo de entrega</dt><dd id="summaryDeliveryCost">Gratis</dd></div>
-                <div><dt>Total</dt><dd class="total" id="summaryTotal">Gs. 199.000</dd></div>
-                <div><dt>Ciudad</dt><dd id="summaryCity">-</dd></div>
-                <div><dt>Dirección</dt><dd id="summaryAddress">-</dd></div>
-                <div><dt>Forma de pago</dt><dd id="summaryPayment">Pago contra entrega</dd></div>
-                <div><dt>Entrega estimada</dt><dd id="summaryEstimate">Calculando…</dd></div>
-              </dl>
-              <p id="paymentNote">No pagás nada ahora. Registrás el pedido y te contactamos para confirmar antes del envío.</p>
-            </section>
-
-            <div class="interior-payment-confirmation" id="interiorPaymentConfirmation" role="alert" hidden>
-              <span class="interior-payment-icon" aria-hidden="true">!</span>
-              <div>
-                <strong>Este pedido requiere pago anticipado</strong>
-                <p>Como la entrega es al interior, te contactaremos por WhatsApp con los datos de pago. El pedido se despacha después de confirmar el abono.</p>
-                <label class="interior-payment-check" for="interiorPaymentCheck">
-                  <input type="checkbox" name="advance_payment_acknowledged" id="interiorPaymentCheck" value="yes">
-                  <span>Entiendo y acepto realizar el pago anticipado antes del despacho.</span>
-                </label>
-              </div>
-            </div>
-
-            <button class="order-button pulse-buy" id="orderSubmitButton" type="submit">
-              <span class="btn-text">✅ CONFIRMAR MI PEDIDO</span>
-              <span class="btn-loader hidden"><span class="spinner"></span> Procesando...</span>
-            </button>
-
-            <div class="trust-badges" aria-label="Elementos de confianza">
-              <span>🔒 Compra 100% segura</span>
-              <span>🚚 Delivery GRATIS</span>
-              <span id="paymentTrustBadge">💵 Pago contra entrega</span>
-              <span>📦 Envíos a todo Paraguay</span>
-            </div>
-
-            <small class="secure-note">Plataforma segura. Tus datos están protegidos</small>
-            <p class="form-error" id="formError" role="alert"></p>
-
-            <div class="step-actions step-actions-back-only">
-              <button type="button" class="step-back" data-back="1">← Editar mis datos</button>
-            </div>
-          </div>
         </form>
       </div>
     </section>
@@ -540,6 +492,6 @@
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
-  <script src="script.js?v=20260820-payment-check-v12"></script>
+  <script src="script.js?v=20260905-direct-checkout-v14"></script>
 </body>
 </html>
