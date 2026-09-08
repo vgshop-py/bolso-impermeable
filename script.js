@@ -24,15 +24,16 @@ const productImagesByColor = {
   Rosa: 'img/rosa.jpeg',
 };
 
+const OUT_OF_STOCK_COLORS = new Set(['Lila']);
+
 const ORDER_COLOR_OPTIONS = [
   { name: 'Negro', swatch: '#15151b' },
   { name: 'Gris', swatch: '#9aa0a6' },
-  { name: 'Lila', swatch: '#b79ce8' },
   { name: 'Rosa', swatch: '#e86ea6' },
 ];
 
 function selectProductColor(color, imagePath = productImagesByColor[color]) {
-  if (!color) return;
+  if (!color || OUT_OF_STOCK_COLORS.has(color)) return;
 
   document.querySelectorAll('[data-color]').forEach((control) => {
     const isSelected = control.dataset.color === color;
