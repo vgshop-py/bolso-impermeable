@@ -2,6 +2,7 @@ const thumbs = document.querySelectorAll('.thumb');
 const mainImage = document.querySelector('#mainProductImage');
 const CONFIG = {
   productName: 'Bolso Impermeable',
+  productId: 'BOLSO-IMPERMEABLE',
   productPrice: 199000,
   currency: 'PYG',
   origin: 'landing_bolso_impermeable',
@@ -9,8 +10,7 @@ const CONFIG = {
   supabaseUrl: 'https://roruinqorwgolcrhhmpm.supabase.co',
   supabaseAnonKey: 'sb_publishable_aRPb1yNunMEheat00BxwtQ_Uft732KJ',
   supabaseTable: 'pedidos_web',
-  metaPixelId: '2412226475899711',
-  googleAdsConversionSendTo: 'AW-610202265/LIaMCPiLhfAcEJnl-6Ic',
+  metaPixelId: '2141006803281667',
   // Telegram se envía server-side desde el trigger de Supabase (notify_telegram_new_order).
   // NUNCA poner el bot token aquí: es código de cliente y quedaría público.
 };
@@ -259,8 +259,8 @@ function metaPayload(payload) {
   return {
     content_name: CONFIG.productName,
     content_type: 'product',
-    content_ids: [CONFIG.origin],
-    contents: [{ id: CONFIG.origin, quantity, item_price: CONFIG.productPrice }],
+    content_ids: [CONFIG.productId],
+    contents: [{ id: CONFIG.productId, quantity, item_price: CONFIG.productPrice }],
     value,
     currency: CONFIG.currency,
     quantity,
@@ -295,17 +295,6 @@ function trackGA(eventName, payload = trackingPayload()) {
   if (typeof window.gtag === 'function') window.gtag('event', eventName, payload);
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event: eventName, ...payload });
-}
-
-function trackGoogleAdsOrder(payload = trackingPayload()) {
-  if (typeof window.gtag !== 'function') return;
-
-  window.gtag('event', 'conversion', {
-    send_to: CONFIG.googleAdsConversionSendTo,
-    value: Number(payload.value) || CONFIG.productPrice,
-    currency: 'PYG',
-    transaction_id: String(payload.transaction_id || ''),
-  });
 }
 
 function trackMeta(eventName, payload = trackingPayload()) {
@@ -345,7 +334,6 @@ function trackLandingEvent(eventName, payload = trackingPayload()) {
     },
     lead: () => {
       fireTracking('ga4:generate_lead', () => trackGA('generate_lead', payload));
-      fireTracking(`google_ads:order:${payload.transaction_id || 'current'}`, () => trackGoogleAdsOrder(payload));
       fireTracking('meta:Lead', () => trackMeta('Lead', payload));
     },
     contact: () => {
@@ -1017,7 +1005,7 @@ orderForms.forEach((form) => form.addEventListener('submit', async (event) => {
   const order = {
     id: orderId,
     numero_pedido: orderId,
-    producto_id: CONFIG.origin,
+    producto_id: CONFIG.productId,
     producto_nombre: CONFIG.productName,
     producto: CONFIG.productName,
     producto_imagen: 'IMG/Inicio1.png',

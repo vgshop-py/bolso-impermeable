@@ -15,11 +15,9 @@ const PRODUCT_CONFIG = {
   currency: "PYG",
 
   // ====== ANALYTICS (reutilizados de la infra VG Shop) ======
-  metaPixelId: "2412226475899711",       // Meta Pixel VG Shop (activo)
+  metaPixelId: "2141006803281667",       // Meta Pixel / conjunto VENTA CAPI
   tiktokPixelId: "D9C46VBC77U7PB56S7NG", // TikTok Pixel (activo)
   ga4Id: "G-8WM6CYEB73",                 // GA4 real compartido VG Shop
-  googleAdsId: "AW-610202265",           // Etiqueta base de Google Ads
-  googleAdsConversionSendTo: "AW-610202265/LIaMCPiLhfAcEJnl-6Ic", // Pedido confirmado
   gtmId: "GTM-XXXXXXX",                  // ← PLACEHOLDER: pegá tu contenedor GTM (opcional)
   clarityId: "PEGAR_AQUI",               // ← PLACEHOLDER: Microsoft Clarity ID (opcional)
   whatsapp: "595972738779",              // Contacto WhatsApp VG Shop
